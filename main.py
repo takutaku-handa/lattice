@@ -35,7 +35,7 @@ def make_lattice(context: str, dictionary: dict):
     return [[0] + hu[1] for hu in lattice_list]
 
 
-def plot(lattice: list, dictionary: dict, cost_dictionary: dict, cost: list,
+def plot(dictionary: dict, cost_dictionary: dict, cost: list,
          route: list, solid: list, dashed: list, x_gap: float, height: float, count: int):
     word = set()
     for r in route:
@@ -144,7 +144,7 @@ def viterbi(lattice: list, dictionary: dict, cost_dictionary: dict):
             if cost[d] < 0:
                 subset_viterbi(d, cost, route, lattice, dictionary, cost_dictionary, solid, dashed)
 
-                plot(lattice, dictionary, cost_dictionary, cost, route, solid, dashed, x_gap, height, count)
+                plot(dictionary, cost_dictionary, cost, route, solid, dashed, x_gap, height, count)
                 count += 1
 
 
