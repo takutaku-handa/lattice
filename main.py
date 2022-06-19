@@ -35,63 +35,6 @@ def make_lattice(context: str, dictionary: dict):
     return [[0] + hu[1] for hu in lattice_list]
 
 
-def show_lattice(lattice: list, dictionary: dict, dictionary_cost: dict):
-    for route in lattice:
-        cost = 0
-
-        for r in range(len(route) - 1):
-            key = route[r]
-            key_plus = route[r + 1]
-            word = dictionary[key]
-            print("{0}({1})".format(word[0], word[1]), end=" | ")
-            cost += word[2]
-
-            cost += dictionary_cost[(key, key_plus)]
-
-        print("{0}({1})".format(dictionary[-1][0], dictionary[-1][1]), end=" | ")
-        print(cost)
-
-
-def subset_viterbi(goal: int, cost: list, route: list, lattice: list,
-                   dictionary: dict, cost_dictionary: dict, solid_list: list, dashed_list: list):
-    new = []
-    for i in lattice:
-        if goal in i:
-            frm = i[i.index(goal) - 1]
-
-            c = cost_dictionary[(frm, goal)]
-
-            if cost[frm] >= 0:
-                new_cost = cost[frm] + dictionary[goal][2] + c
-                new_route = route[frm] + [goal]
-                new.append([new_cost, new_route])
-                for r in range(len(new_route) - 1):
-                    nr = tuple(new_route[r: r + 2])
-                    if nr not in solid_list and nr not in dashed_list:
-                        dashed_list.append(nr)
-            else:
-                return False
-
-    flag = -1
-    for ll in new:
-        if flag < 0:
-            cost[goal] = ll[0]
-            route[goal] = ll[1]
-        else:
-            if ll[0] < flag:
-                cost[goal] = ll[0]
-                route[goal] = ll[1]
-
-    for r in range(len(route[goal]) - 1):
-        aa = tuple(route[goal][r: r + 2])
-        if aa not in solid_list:
-            solid_list.append(aa)
-        if aa in dashed_list:
-            dashed_list.remove(aa)
-
-    return
-
-
 def plot(lattice: list, dictionary: dict, cost_dictionary: dict, cost: list,
          route: list, solid: list, dashed: list, x_gap: float, height: float, count: int):
     word = set()
@@ -147,6 +90,46 @@ def plot(lattice: list, dictionary: dict, cost_dictionary: dict, cost: list,
     plt.close()
 
 
+def subset_viterbi(goal: int, cost: list, route: list, lattice: list,
+                   dictionary: dict, cost_dictionary: dict, solid_list: list, dashed_list: list):
+    new = []
+    for i in lattice:
+        if goal in i:
+            frm = i[i.index(goal) - 1]
+
+            c = cost_dictionary[(frm, goal)]
+
+            if cost[frm] >= 0:
+                new_cost = cost[frm] + dictionary[goal][2] + c
+                new_route = route[frm] + [goal]
+                new.append([new_cost, new_route])
+                for r in range(len(new_route) - 1):
+                    nr = tuple(new_route[r: r + 2])
+                    if nr not in solid_list and nr not in dashed_list:
+                        dashed_list.append(nr)
+            else:
+                return False
+
+    flag = -1
+    for ll in new:
+        if flag < 0:
+            cost[goal] = ll[0]
+            route[goal] = ll[1]
+        else:
+            if ll[0] < flag:
+                cost[goal] = ll[0]
+                route[goal] = ll[1]
+
+    for r in range(len(route[goal]) - 1):
+        aa = tuple(route[goal][r: r + 2])
+        if aa not in solid_list:
+            solid_list.append(aa)
+        if aa in dashed_list:
+            dashed_list.remove(aa)
+
+    return
+
+
 def viterbi(lattice: list, dictionary: dict, cost_dictionary: dict):
     cost = [0] + [-1 for _ in range(len(dictionary) - 1)]
     route = [[0]] + [[] for _ in range(len(dictionary) - 1)]
@@ -168,7 +151,7 @@ def viterbi(lattice: list, dictionary: dict, cost_dictionary: dict):
 if __name__ == "__main__":
     sample = "さけようとした"
 
-    # word_dictionary = { index : ["文字", "種類", "生起確率", [ラティス図における左下の座標] }
+    # { index : ["文字", "種類", "生起確率", [ラティス図における左下の座標] }
     word_dictionary = {0: ["#", "文頭", 0, (0, 0)],
                        1: ["さけよ", "動詞", 2700, (1, 0)],
                        2: ["さけ", "名詞", 1500, (1, -1)],
