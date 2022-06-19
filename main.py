@@ -33,17 +33,17 @@ def make_lattice(context_: str, dictionary_: dict):
     return [[0] + i[1] for i in lattice_list]
 
 
-def line_collect(ax_: plt.subplot, lines_: list, dictionary_: dict, cost_dictionary_: dict,
-                 x_gap_: float, height_: float, dashed: bool):
+def line_collect(ax_: plt.subplot, nodes_: list[tuple], dictionary_: dict, cost_dictionary_: dict,
+                 x_gap_: float, height_: float, dashed: bool = False):
     collection = []
-    for line in lines_:
-        right_word = dictionary_[line[0]][0]
-        right_point = dictionary_[line[0]][3]
-        left_point = dictionary_[line[1]][3]
+    for node in nodes_:
+        right_word = dictionary_[node[0]][0]
+        right_point = dictionary_[node[0]][3]
+        left_point = dictionary_[node[1]][3]
         xytext = (right_point[0] + len(right_word) - x_gap_, right_point[1] + 0.5 * height_)
         xy = (left_point[0], left_point[1] + 0.5 * height_)
         collection.append([xytext, xy])
-        cost_sss = cost_dictionary_[line]
+        cost_sss = cost_dictionary_[node]
         ax_.text((xy[0] + xytext[0]) / 2, (xy[1] + xytext[1]) / 2, cost_sss,
                  horizontalalignment="center")
     if dashed:
@@ -54,7 +54,7 @@ def line_collect(ax_: plt.subplot, lines_: list, dictionary_: dict, cost_diction
 
 
 def plot(dictionary_: dict, cost_dictionary_: dict, cost_memory_: list, path_memory_: list,
-         solid_node_: list, dashed_node_: list, x_gap_: float, height_: float, count_: int):
+         solid_nodes_: list[tuple], dashed_nodes_: list[tuple], x_gap_: float, height_: float, count_: int):
     word_set = set()
     for num in path_memory_:
         word_set = word_set | set(num)
@@ -74,15 +74,15 @@ def plot(dictionary_: dict, cost_dictionary_: dict, cost_memory_: list, path_mem
         ax.set_xlim([-0.5, 9])
         ax.set_ylim([-2.5, 2])
 
-    line_collect(ax, solid_node_, dictionary_, cost_dictionary_, x_gap_, height_, dashed=False)
-    line_collect(ax, dashed_node_, dictionary_, cost_dictionary_, x_gap_, height_, dashed=True)
+    line_collect(ax, solid_nodes_, dictionary_, cost_dictionary_, x_gap_, height_)
+    line_collect(ax, dashed_nodes_, dictionary_, cost_dictionary_, x_gap_, height_, dashed=True)
 
     plt.savefig("result{0}.png".format(count_))
     plt.close()
 
 
-def subset_viterbi(goal_: int, cost_memory_: list, path_memory_: list, lattice_: list,
-                   dictionary_: dict, cost_dictionary_: dict, solid_node_: list, dashed_node_: list):
+def subset_viterbi(goal_: int, cost_memory_: list, path_memory_: list, lattice_: list[list],
+                   dictionary_: dict, cost_dictionary_: dict, solid_nodes_: list[tuple], dashed_nodes_: list[tuple]):
     candidates = []
     for lat in lattice_:
         if goal_ in lat:
@@ -96,8 +96,8 @@ def subset_viterbi(goal_: int, cost_memory_: list, path_memory_: list, lattice_:
                 candidates.append([new_cost, new_path])
                 for r in range(len(new_path) - 1):
                     new_node = tuple(new_path[r: r + 2])
-                    if new_node not in solid_node_ and new_node not in dashed_node_:
-                        dashed_node_.append(new_node)
+                    if new_node not in solid_nodes_ and new_node not in dashed_nodes_:
+                        dashed_nodes_.append(new_node)
             else:
                 return
 
@@ -113,15 +113,15 @@ def subset_viterbi(goal_: int, cost_memory_: list, path_memory_: list, lattice_:
 
     for r in range(len(path_memory_[goal_]) - 1):
         node_update = tuple(path_memory_[goal_][r: r + 2])
-        if node_update not in solid_node_:
-            solid_node_.append(node_update)
-        if node_update in dashed_node_:
-            dashed_node_.remove(node_update)
+        if node_update not in solid_nodes_:
+            solid_nodes_.append(node_update)
+        if node_update in dashed_nodes_:
+            dashed_nodes_.remove(node_update)
 
     return
 
 
-def viterbi(lattice_: list, dictionary_: dict, cost_dictionary_: dict):
+def viterbi(lattice_: list[list], dictionary_: dict, cost_dictionary_: dict):
     cost_memory = [0] + [-1 for _ in range(len(dictionary_) - 1)]
     path_memory = [[0]] + [[] for _ in range(len(dictionary_) - 1)]
     solid_node = []
