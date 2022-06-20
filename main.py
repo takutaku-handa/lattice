@@ -3,21 +3,22 @@ from matplotlib import patches
 from matplotlib.collections import LineCollection
 
 
+# 文字列と辞書から、可能性のある単語列をリストとして返す関数
 def make_lattice(context_: str, dictionary_: dict):
-    # 右から左へ
+    # 解析対象の文字列の中から、辞書にあるものをリストアップする
     use_words = []
     length = len(context_)
     for start in range(length):
         first_char = context_[start]
-        for num, data in dict.items(dictionary_):
+        for key, data in dict.items(dictionary_):
             word = data[0]
             if word[0] == first_char:
-                use_words.append([start, start + len(word), num, word])
+                use_words.append([start, start + len(word), key, word])
 
-    # 右から左へ
-    lattice_list = [[length, [-1]]]
+    # リストアップした単語のすべての繋がり方を後ろから求める
+    lattice_list = [[length, [-1]]]  # [[(先頭の位置), [(先頭を除く単語列)]]]
     flag = length
-    while flag > 0:
+    while flag > 0:  # すべての繋がり方が解析対象の文字列の先頭までいけば終わり
         tmp = []
         for head_and_lattice in lattice_list:
             head = head_and_lattice[0]
@@ -30,9 +31,10 @@ def make_lattice(context_: str, dictionary_: dict):
         lattice_list = tmp
         flag = max([i[0] for i in lattice_list])
 
-    return [[0] + i[1] for i in lattice_list]
+    return [[0] + i[1] for i in lattice_list]  # [[0, i, j, ..., -1], [...], ... ] ijkは辞書のkeyに対応
 
 
+# 実線と破線を描画(plot()で使う)
 def line_collect(ax_: plt.subplot, nodes_: list[tuple], dictionary_: dict, cost_dictionary_: dict,
                  x_gap_: float, height_: float, dashed: bool = False):
     collection = []
@@ -53,6 +55,7 @@ def line_collect(ax_: plt.subplot, nodes_: list[tuple], dictionary_: dict, cost_
     ax_.add_collection(lc)
 
 
+# ビタビ探索中の状態図を描画
 def plot(dictionary_: dict, cost_dictionary_: dict, cost_memory_: list, path_memory_: list,
          solid_nodes_: list[tuple], dashed_nodes_: list[tuple], x_gap_: float, height_: float, count_: int):
     word_set = set()
@@ -81,16 +84,18 @@ def plot(dictionary_: dict, cost_dictionary_: dict, cost_memory_: list, path_mem
     plt.close()
 
 
+# 部分問題を解く関数。今までに解いた問題の解をもとに、文頭からある文字(goal)までの最小コストとそのパスを求める。
 def subset_viterbi(goal_: int, cost_memory_: list, path_memory_: list, lattice_: list[list],
                    dictionary_: dict, cost_dictionary_: dict, solid_nodes_: list[tuple], dashed_nodes_: list[tuple]):
     candidates = []
     for lat in lattice_:
         if goal_ in lat:
-            _from = lat[lat.index(goal_) - 1]
+            _from = lat[lat.index(goal_) - 1]  # goalのちょうど一つ後ろの単語
+            cost = cost_dictionary_[(_from, goal_)]  # _fromとgoalの接続コスト
 
-            cost = cost_dictionary_[(_from, goal_)]
-
-            if cost_memory_[_from] != -1:
+            if cost_memory_[_from] == -1:  # goalの一つ後ろの単語までの最小コストがすべて求まっていなければ、後回しにする。
+                return
+            else:
                 new_cost = cost_memory_[_from] + dictionary_[goal_][2] + cost
                 new_path = path_memory_[_from] + [goal_]
                 candidates.append([new_cost, new_path])
@@ -98,9 +103,7 @@ def subset_viterbi(goal_: int, cost_memory_: list, path_memory_: list, lattice_:
                     new_node = tuple(new_path[r: r + 2])
                     if new_node not in solid_nodes_ and new_node not in dashed_nodes_:
                         dashed_nodes_.append(new_node)
-            else:
-                return
-
+    # 最適解の候補の中から最もコストが小さいものを選び、メモリを更新し、実線と破線を追加
     flag = -1
     for cost_and_path in candidates:
         if flag == -1:
@@ -121,11 +124,12 @@ def subset_viterbi(goal_: int, cost_memory_: list, path_memory_: list, lattice_:
     return
 
 
+# ビタビ探索の関数。sub_viterbi()を繰り返し、途中結果・最終結果をplot()で描画する。
 def viterbi(lattice_: list[list], dictionary_: dict, cost_dictionary_: dict):
     cost_memory = [0] + [-1 for _ in range(len(dictionary_) - 1)]
     path_memory = [[0]] + [[] for _ in range(len(dictionary_) - 1)]
-    solid_node = []
-    dashed_node = []
+    solid_nodes = []
+    dashed_nodes = []
     x_gap = 0.5
     height = 0.5
     count = 0
@@ -134,17 +138,18 @@ def viterbi(lattice_: list[list], dictionary_: dict, cost_dictionary_: dict):
         for word in dictionary_.keys():
             if cost_memory[word] < 0:
                 subset_viterbi(word, cost_memory, path_memory, lattice_, dictionary_,
-                               cost_dictionary_, solid_node, dashed_node)
+                               cost_dictionary_, solid_nodes, dashed_nodes)
 
                 plot(dictionary_, cost_dictionary_, cost_memory, path_memory,
-                     solid_node, dashed_node, x_gap, height, count)
+                     solid_nodes, dashed_nodes, x_gap, height, count)
                 count += 1
 
 
 if __name__ == "__main__":
     sample_context = "さけようとした"
 
-    # { index : ["文字", "種類", "生起確率", [ラティス図における左下の座標] }
+    # { index : ["文字", "種類", "生起コスト", (ラティス図における左下の座標)] }
+    # 今回は（ラティス図における左下の座標）は、make_lattice()の返り値より手動で設定した。
     dictionary = {0: ["#", "文頭", 0, (0, 0)],
                   1: ["さけよ", "動詞", 2700, (1, 0)],
                   2: ["さけ", "名詞", 1500, (1, -1)],
